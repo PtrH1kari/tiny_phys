@@ -89,6 +89,50 @@ tp_shape_desc tp_shape_desc_default(void) {
     return d;
 }
 
+static void tp_body_pool_init(tp_body* bodies, uint32_t from, uint32_t to) {
+    for (uint32_t i = from; i < to; i++) {
+        memset(&bodies[i], 0, sizeof bodies[i]);
+        bodies[i].generation = 1;
+        bodies[i].in_use = false;
+        bodies[i].next_free = (i + 1 < to) ? (i + 1) : TP_INVALID_INDEX;
+    }
+}
+
+static bool tp_body_pool_grow(tp_world* world) {
+    uint32_t new_capacity = (world->body_capacity != 0) ? (world->body_capacity * 2) : 64;
+    tp_body* new_bodies = tp_alloc(world, new_capacity * sizeof(tp_body));
+    if (new_bodies == NULL) return false;
+    uint32_t old_body_capacity =  world->body_capacity;
+    memcpy(new_bodies, world->bodies, world->body_capacity * sizeof(tp_body));
+    tp_body_pool_init(new_bodies, world->body_capacity, new_capacity);
+    tp_free(world, world->bodies);
+    world->bodies = new_bodies;
+    world->body_capacity = new_capacity;
+    world->body_free_head = old_body_capacity;
+    return true;
+}
+
+tp_body* tp_body_lookup(tp_world* world, tp_body_id id) {
+    if (world == NULL || id.index >= world->body_capacity) return NULL;
+    tp_body* b = &world->bodies[id.index];
+    if (!b->in_use) return NULL;
+    if (b->generation != id.generation) return NULL;
+    return b;
+}
+
+const tp_body* tp_body_lookup_const(const tp_world* world, tp_body_id id)  {
+    return tp_body_lookup((tp_world*)world, id);
+}
+
+void tp_body_update_inertia_world(tp_body *body) {
+    if (body->lock_rotation || body->type != TP_BODY_DYNAMIC) {
+        body->inv_inertia_world = tp_mat3_zero();
+    } else {
+        tp_mat3 r = tp_mat3_from_quat(body->xform.rotation);
+        body->inv_inertia_world = tp_mat3_mul(tp_mat3_mul(r, body->inv_inertia_local), tp_mat3_transpose(r));
+    }
+}
+
 const char* tp_version_string(void) {
     return "tiny_phys 0.1.0-dev";
 }
