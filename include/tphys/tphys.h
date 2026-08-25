@@ -34,6 +34,8 @@ extern "C" {
 #define TPHYS_VERSION_MINOR 1
 #define TPHYS_VERSION_PATCH 0
 
+#define TP_LAYER_ALL 0xFFFFFFFFu
+
 /* Export macro. Static builds need nothing; shared builds define TPHYS_SHARED. */
 #if defined(_WIN32) && defined(TPHYS_SHARED)
   #if defined(TPHYS_BUILDING)
