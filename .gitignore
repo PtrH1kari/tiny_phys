@@ -1,0 +1,21 @@
+# build output
+build/
+build-*/
+out/
+cmake-build-*/
+
+# compiler / tooling artefacts
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+compile_commands.json
+.cache/
+.ccls-cache/
+
+# editors
+.vscode/
+.idea/
+*.swp

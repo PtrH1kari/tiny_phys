@@ -1,0 +1,58 @@
+name: ci
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.os }} / ${{ matrix.cc }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,  cc: gcc,   cxx: g++ }
+          - { os: ubuntu-latest,  cc: clang, cxx: clang++ }
+          - { os: macos-latest,   cc: clang, cxx: clang++ }
+          - { os: windows-latest, cc: cl,    cxx: cl }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+
+      - name: Build
+        run: cmake --build build --config Debug --parallel
+
+      - name: Test
+        run: ctest --test-dir build --build-config Debug --output-on-failure
+
+  sanitizers:
+    name: asan + ubsan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DTPHYS_SANITIZE=ON
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+        env:
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+
+  cxx-header-check:
+    name: public headers are valid C++
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile headers as strict C++17
+        run: |
+          printf '#include "tphys/tphys.h"\nint main(){ return (int)tp_world_desc_default().max_bodies * 0; }\n' > /tmp/cxx_check.cpp
+          g++ -std=c++17 -Wall -Wextra -pedantic -Iinclude -fsyntax-only /tmp/cxx_check.cpp
