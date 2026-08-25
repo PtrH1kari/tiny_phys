@@ -34,7 +34,7 @@ cmake --build build-asan -j && ctest --test-dir build-asan --output-on-failure
 include(FetchContent)
 FetchContent_Declare(
     tiny_phys
-    GIT_REPOSITORY https://github.com/<you>/tiny_phys.git
+    GIT_REPOSITORY https://github.com/PtrH1kari/tiny_phys.git
     GIT_TAG        main
 )
 FetchContent_MakeAvailable(tiny_phys)
@@ -110,7 +110,7 @@ fixed physics step.
 |---|---|---|
 | M0 | Repo, CMake, CI, public API, test harness | done |
 | M1 | Vector / quaternion / matrix math | done |
-| M2 | Body pool, handles, semi-implicit Euler integrator | done |
+| M2 | Body pool, handles, semi-implicit Euler integrator | |
 | M3 | Broadphase: brute force, then a dynamic AABB tree | |
 | M4 | Narrowphase: sphere, box, capsule, plane; contact manifolds | |
 | M5 | Sequential-impulse solver with friction and warm starting | |
