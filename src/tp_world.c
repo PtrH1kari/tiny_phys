@@ -1,4 +1,6 @@
 #include "tp_internal.h"
+#include "tphys/tphys.h"
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -131,6 +133,41 @@ void tp_body_update_inertia_world(tp_body *body) {
         tp_mat3 r = tp_mat3_from_quat(body->xform.rotation);
         body->inv_inertia_world = tp_mat3_mul(tp_mat3_mul(r, body->inv_inertia_local), tp_mat3_transpose(r));
     }
+}
+
+tp_world* tp_world_create(const tp_world_desc* desc) {
+    tp_world_desc d = desc ? *desc : tp_world_desc_default();
+    tp_allocator alloc = d.allocator;
+    if (alloc.alloc_fn == NULL || alloc.free_fn == NULL) {
+        alloc.alloc_fn = tp_default_alloc;
+        alloc.free_fn = tp_default_free;
+        alloc.ctx = NULL;
+    }
+    tp_world* world = alloc.alloc_fn(sizeof(tp_world), alloc.ctx);
+    if (world == NULL) return NULL;
+    memset(world, 0, sizeof *world);
+    world->alloc = alloc;
+    world->gravity = d.gravity;
+    world->velocity_iterations = d.velocity_iterations ? d.velocity_iterations : 8;
+    world->position_iterations = d.position_iterations ? d.position_iterations : 3;
+    uint32_t capacity = d.max_bodies ? d.max_bodies : 256;
+    world->bodies = tp_alloc(world, capacity * sizeof(tp_body));
+    if (world->bodies == NULL) {
+        alloc.free_fn(world, alloc.ctx);
+        return NULL;
+    }
+    tp_body_pool_init(world->bodies, 0, capacity);
+    world->body_capacity = capacity;
+    world->body_free_head = 0;
+    world->body_count = 0;
+    return world;
+}
+
+void tp_world_destroy(tp_world *world) {
+    if (world == NULL) return;
+    tp_allocator alloc = world->alloc;
+    tp_free(world, world->bodies);
+    alloc.free_fn(world, alloc.ctx);
 }
 
 const char* tp_version_string(void) {
