@@ -7,7 +7,7 @@
 
 typedef struct tp_body {
     /* --- integrator state --- */
-    tp_transform xform; 
+    tp_transform xform;
     tp_vec3 linear_velocity, angular_velocity, force_accum, torque_accum;
     /* --- mass  properties --- */
     float inv_mass;
