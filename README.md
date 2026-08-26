@@ -110,7 +110,7 @@ fixed physics step.
 |---|---|---|
 | M0 | Repo, CMake, CI, public API, test harness | done |
 | M1 | Vector / quaternion / matrix math | done |
-| M2 | Body pool, handles, semi-implicit Euler integrator | |
+| M2 | Body pool, handles, semi-implicit Euler integrator | done |
 | M3 | Broadphase: brute force, then a dynamic AABB tree | |
 | M4 | Narrowphase: sphere, box, capsule, plane; contact manifolds | |
 | M5 | Sequential-impulse solver with friction and warm starting | |
