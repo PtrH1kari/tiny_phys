@@ -77,7 +77,7 @@ endif()
 if(TPHYS_BUILD_TESTS)
     enable_testing()
 
-    foreach(test_name IN ITEMS test_math test_body)
+    foreach(test_name IN ITEMS test_math test_body test_broadphase)
         add_executable(${test_name} tests/${test_name}.c)
         target_link_libraries(${test_name} PRIVATE tphys)
         target_include_directories(${test_name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)

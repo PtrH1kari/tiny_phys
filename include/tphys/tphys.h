@@ -254,6 +254,8 @@ TP_API bool tp_world_raycast(const tp_world* world,
                              tp_query_filter filter,
                              tp_ray_hit* out_hit);
 
+TP_API uint32_t tp_world_get_pair_count(const tp_world* world);
+
 /* ----------------------------------------------------------------- events */
 
 typedef enum tp_contact_event_type {

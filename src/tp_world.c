@@ -1,4 +1,5 @@
 #include "tp_internal.h"
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -178,6 +179,7 @@ void tp_world_destroy(tp_world *world) {
     if (world == NULL) return;
     tp_allocator alloc = world->alloc;
     tp_free(world, world->bodies);
+    tp_free(world, world->pairs);
     alloc.free_fn(world, alloc.ctx);
 }
 
@@ -288,6 +290,11 @@ uint32_t tp_world_get_body_count(const tp_world *world) {
     return world->body_count;
 }
 
+uint32_t tp_world_get_pair_count(const tp_world *world) {
+    if (world == NULL) return 0u;
+    return world->pair_count;
+}
+
 float tp_body_get_mass(const tp_world* world, tp_body_id id) {
     const tp_body* b = tp_body_lookup_const(world, id);
     if (b == NULL || b->inv_mass <= 0.0f) return 0.0f;
@@ -387,6 +394,55 @@ void tp_body_apply_impulse_at(tp_world *world, tp_body_id id, tp_vec3 impulse, t
     b->sleep_timer = 0.0f;
 }
 
+// === Brute force ===
+
+static bool tp_pairs_push(tp_world* world, tp_body_id a, tp_body_id b) {
+    if (world->pair_count == world->pair_capacity) {
+        uint32_t new_capacity = world->pair_capacity ? world->pair_capacity * 2 : 64;
+        tp_broadphase_pair* new_pair = tp_alloc(world, new_capacity * sizeof(tp_broadphase_pair));
+        if (new_pair == NULL) return false;
+        memcpy(new_pair, world->pairs, world->pair_capacity * sizeof(tp_broadphase_pair));
+        tp_free(world, world->pairs);
+        world->pair_capacity = new_capacity;
+        world->pairs = new_pair;
+    }
+    world->pairs[world->pair_count].a = a;
+    world->pairs[world->pair_count].b = b;
+    world->pair_count++;
+    return true;
+}
+
+static tp_aabb tp_body_compute_aabb(const tp_body* b) {
+    /* TODO(M4): объединить AABB всех форм тела */
+    const float r = 0.5f;
+    return tp_aabb_from_center_extents(b->xform.position, tp_v3(r, r, r));
+}
+
+static void tp_broadphase_brute_force(tp_world* world) {
+    world->pair_count = 0;
+    for (uint32_t i = 0; i < world->body_capacity; ++i) {
+        tp_body* a = &world->bodies[i];
+        if (!a->in_use) continue;
+        for (uint32_t j = i + 1; j < world->body_capacity; ++j) {
+            tp_body* b = &world->bodies[j];
+            if (!b->in_use) continue;
+            if (a->type != TP_BODY_DYNAMIC && b->type != TP_BODY_DYNAMIC) continue;
+            if (!a->awake && !b->awake) continue;
+            tp_aabb aabb_a = tp_body_compute_aabb(a);
+            tp_aabb aabb_b = tp_body_compute_aabb(b);
+            if (tp_aabb_overlaps(aabb_a, aabb_b)) {
+                tp_body_id id_a;
+                id_a.index = i;
+                id_a.generation = a->generation;
+                tp_body_id id_b;
+                id_b.index = j;
+                id_b.generation = b->generation;
+                if (!tp_pairs_push(world, id_a, id_b)) return;
+            }
+        }
+    }
+}
+
 // === World step ===
 
 static inline void tp_integrate_velocities(tp_world* world, float dt) {
@@ -455,7 +511,7 @@ static inline void tp_clear_forces(tp_world* world) {
 
 void tp_world_step(tp_world* world, float dt) {
     if (world == NULL || dt <= 0.0f) return;
-    /* TODO(M3): broadphase -- AABB, поиск пар в дереве. */
+    tp_broadphase_brute_force(world);
     /* TODO(M4): narrowphase -- контактные многообразия. */
     tp_integrate_velocities(world, dt);
     /* TODO(M5): решить скоростные ограничения, velocity_iterations раз. */

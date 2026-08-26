@@ -28,12 +28,18 @@ typedef struct tp_body {
     bool awake;
     float sleep_timer;
 } tp_body;
+typedef struct tp_broadphase_pair {
+    tp_body_id a, b;
+} tp_broadphase_pair;
 struct tp_world {
     tp_vec3 gravity;
     uint32_t velocity_iterations, position_iterations;
     tp_body* bodies;
     uint32_t body_capacity, body_count, body_free_head;
     tp_allocator alloc;
+    tp_broadphase_pair* pairs;
+    uint32_t pair_count;
+    uint32_t pair_capacity;
 };
 
 void* tp_alloc(tp_world* world, size_t size);
