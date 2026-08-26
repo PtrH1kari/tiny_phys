@@ -42,6 +42,10 @@ static inline tp_vec3 tp_v3_scale(tp_vec3 a, float s) {
   return tp_v3(a.x * s, a.y * s, a.z * s);
 }
 
+static inline tp_vec3 tp_v3_mad(tp_vec3 a, tp_vec3 b, float s) {
+  return tp_v3(a.x + b.x * s, a.y + b.y * s, a.z + b.z * s);
+}
+
 static inline float tp_v3_dot(tp_vec3 a, tp_vec3 b) {
   return a.x * b.x + a.y * b.y + a.z * b.z;
 }
