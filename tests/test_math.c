@@ -87,5 +87,68 @@ int main(void) {
         TP_CHECK_NEAR(fabsf(id.rotation.w), 1.0f, eps);
     }
 
+    TP_TEST("AABB overlap X") {
+        tp_aabb a = tp_aabb_make(tp_v3(0, 0, 0), tp_v3(10, 0, 0));
+        tp_aabb b = tp_aabb_make(tp_v3(20, 0, 0), tp_v3(30, 0, 0));
+        TP_CHECK(!tp_aabb_overlaps(a, b));
+        b.min.x = 5;
+        TP_CHECK(tp_aabb_overlaps(a, b));
+    }
+
+    TP_TEST("AABB overlap Y") {
+        tp_aabb a = tp_aabb_make(tp_v3(0, 0, 0), tp_v3(0, 10, 0));
+        tp_aabb b = tp_aabb_make(tp_v3(0, 20, 0), tp_v3(0, 30, 0));
+        TP_CHECK(!tp_aabb_overlaps(a, b));
+        b.min.y = 5;
+        TP_CHECK(tp_aabb_overlaps(a, b));
+    }
+
+    TP_TEST("AABB overlapping on X but separated on Y") {
+        tp_aabb a = tp_aabb_make(tp_v3(0, 0, 0), tp_v3(10, 10, 10));
+        tp_aabb b = tp_aabb_make(tp_v3(5, 20, 5), tp_v3(15, 30, 15));
+        TP_CHECK(!tp_aabb_overlaps(a, b));
+    }
+
+    TP_TEST("AABB merge") {
+        tp_aabb a = tp_aabb_make(tp_v3(0, 0, 0), tp_v3(10, 10, 10));
+        tp_aabb b = tp_aabb_make(tp_v3(10, 10, 10), tp_v3(20, 20, 20));
+        tp_aabb merged = tp_aabb_merge(a, b);
+        TP_CHECK(tp_aabb_contains(merged, a));
+        TP_CHECK(tp_aabb_contains(merged, b));
+    }
+    
+    TP_TEST("AABB merge invalid") {
+        tp_aabb a = tp_aabb_make(tp_v3(0, 0, 0), tp_v3(10, 10, 10));
+        tp_aabb b = tp_aabb_invalid();
+        tp_aabb merged = tp_aabb_merge(a, b);
+        TP_CHECK_V3_NEAR(merged.min, 0.0f, 0.0f, 0.0f, eps);
+        TP_CHECK_V3_NEAR(merged.max, 10.0f, 10.0f, 10.0f, eps);
+    }
+
+    TP_TEST("AABB contain self") {
+        tp_aabb a = tp_aabb_make(tp_v3(0, 0, 0), tp_v3(10, 10, 10));
+        TP_CHECK(tp_aabb_contains(a, a));
+    }
+
+    TP_TEST("AABB area") {
+        tp_aabb a = tp_aabb_make(tp_v3(0, 0, 0), tp_v3(2, 2, 2));
+        float area = tp_aabb_surface_area(a);
+        TP_CHECK_NEAR(area, 24.0f, eps);
+    }
+
+    TP_TEST("AABB expand") {
+        tp_aabb a = tp_aabb_make(tp_v3(10, 10, 10), tp_v3(20, 20, 20));
+        tp_aabb e = tp_aabb_expand(a, 1);
+        TP_CHECK_V3_NEAR(e.min, 9.0f, 9.0f, 9.0f, eps);
+        TP_CHECK_V3_NEAR(e.max, 21.0f, 21.0f, 21.0f, eps);
+    }
+
+    TP_TEST("AABB center/extents round-trips through from_center_extents") {
+        tp_aabb a = tp_aabb_make(tp_v3(-1, 2, 5), tp_v3(3, 8, 11));
+        tp_aabb r = tp_aabb_from_center_extents(tp_aabb_center(a), tp_aabb_extents(a));
+        TP_CHECK_V3_NEAR(r.min, a.min.x, a.min.y, a.min.z, eps);
+        TP_CHECK_V3_NEAR(r.max, a.max.x, a.max.y, a.max.z, eps);
+    }
+
     return tp_test_summary();
 }

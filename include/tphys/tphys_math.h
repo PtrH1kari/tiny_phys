@@ -3,6 +3,10 @@
 
 #include <math.h>
 
+#ifndef __cplusplus
+#include <stdbool.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -14,7 +18,7 @@ typedef struct tp_vec3 { float x, y, z; } tp_vec3;
 typedef struct tp_quat { float x, y, z, w; } tp_quat;
 typedef struct tp_mat3 { tp_vec3 c0, c1, c2; } tp_mat3;
 typedef struct tp_transform { tp_vec3 position; tp_quat rotation; } tp_transform;
-
+typedef struct tp_aabb { tp_vec3 min, max; } tp_aabb;
 
 // tp_vec3
 
@@ -46,6 +50,18 @@ static inline tp_vec3 tp_v3_mad(tp_vec3 a, tp_vec3 b, float s) {
   return tp_v3(a.x + b.x * s, a.y + b.y * s, a.z + b.z * s);
 }
 
+static inline tp_vec3 tp_v3_min(tp_vec3 a, tp_vec3 b) {
+  return tp_v3(a.x < b.x ? a.x : b.x,
+               a.y < b.y ? a.y : b.y,
+               a.z < b.z ? a.z : b.z);
+}
+
+static inline tp_vec3 tp_v3_max(tp_vec3 a, tp_vec3 b) {
+  return tp_v3(a.x > b.x ? a.x : b.x,
+               a.y > b.y ? a.y : b.y,
+               a.z > b.z ? a.z : b.z);
+}
+
 static inline float tp_v3_dot(tp_vec3 a, tp_vec3 b) {
   return a.x * b.x + a.y * b.y + a.z * b.z;
 }
@@ -71,6 +87,72 @@ static inline tp_vec3 tp_v3_normalize(tp_vec3 a) {
   return tp_v3_scale(a, inv_len);
 }
 
+// AABB
+
+static inline tp_aabb tp_aabb_make(tp_vec3 min, tp_vec3 max) {
+  tp_aabb aabb;
+  aabb.min = min;
+  aabb.max = max;
+  return aabb;
+}
+
+static inline tp_aabb tp_aabb_from_center_extents(tp_vec3 c, tp_vec3 e) {
+  tp_vec3 min = tp_v3_sub(c, e);
+  tp_vec3 max = tp_v3_add(c, e);
+  return tp_aabb_make(min, max);
+}
+
+static inline tp_aabb tp_aabb_invalid(void) {
+  tp_vec3 min = tp_v3(+INFINITY, +INFINITY, +INFINITY);
+  tp_vec3 max = tp_v3(-INFINITY, -INFINITY, -INFINITY);
+  return tp_aabb_make(min, max);
+}
+
+static inline tp_aabb tp_aabb_merge(tp_aabb a, tp_aabb b) {
+  return tp_aabb_make(tp_v3_min(a.min, b.min), tp_v3_max(a.max, b.max));
+}
+
+static inline bool tp_aabb_overlaps(tp_aabb a, tp_aabb b) {
+  if (a.max.x < b.min.x || a.min.x > b.max.x) return false;
+  if (a.max.y < b.min.y || a.min.y > b.max.y) return false;
+  if (a.max.z < b.min.z || a.min.z > b.max.z) return false;
+  return true;
+}
+
+static inline bool tp_aabb_contains(tp_aabb a, tp_aabb b) {
+  if ((a.min.x <= b.min.x && a.max.x >= b.max.x)
+   && (a.min.y <= b.min.y && a.max.y >= b.max.y)
+   && (a.min.z <= b.min.z && a.max.z >= b.max.z)) return true;
+  return false;
+}
+
+static inline bool tp_aabb_contains_point(tp_aabb a, tp_vec3 p) {
+  if ((a.min.x <= p.x && a.max.x >= p.x)
+   && (a.min.y <= p.y && a.max.y >= p.y)
+   && (a.min.z <= p.z && a.max.z >= p.z)) return true;
+  return false;
+}
+
+static inline tp_aabb tp_aabb_expand(tp_aabb a, float margin) {
+  tp_vec3 min = tp_v3_sub(a.min, tp_v3(margin, margin, margin));
+  tp_vec3 max = tp_v3_add(a.max, tp_v3(margin, margin, margin));
+  return tp_aabb_make(min, max);
+}
+
+static inline tp_vec3 tp_aabb_center(tp_aabb a) {
+  return tp_v3_scale(tp_v3_add(a.min, a.max), 0.5f);
+}
+
+static inline tp_vec3 tp_aabb_extents(tp_aabb a) {
+  return tp_v3_scale(tp_v3_sub(a.max, a.min), 0.5f);
+}
+
+static inline float tp_aabb_surface_area(tp_aabb a) {
+  tp_vec3 d = tp_v3_sub(a.max, a.min);
+  float area = 2.0f * (d.x * d.y + d.y * d.z + d.z * d.x);
+  return area;
+}
+
 // tp_quat
 
 static inline tp_quat tp_quat_make(float x, float y, float z, float w) {
@@ -83,12 +165,12 @@ static inline tp_quat tp_quat_make(float x, float y, float z, float w) {
 }
 
 static inline tp_quat tp_quat_identity(void) {
-  return tp_quat_make(0, 0, 0, 1);
+  return tp_quat_make(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 static inline tp_quat tp_quat_from_axis_angle(tp_vec3 axis, float radians) {
   tp_vec3 n = tp_v3_normalize(axis);
-  float half = radians / 2;
+  float half = radians / 2.0f;
   float s = sinf(half);
   float c = cosf(half);
   return tp_quat_make(n.x * s, n.y * s, n.z * s, c);
@@ -109,16 +191,16 @@ static inline tp_quat tp_quat_normalize(tp_quat q) {
 
 static inline tp_quat tp_quat_mul(tp_quat a, tp_quat b) {
   tp_quat q;
-  q.x = a.w*b.x + a.x*b.w + a.y*b.z - a.z*b.y;
-  q.y = a.w*b.y - a.x*b.z + a.y*b.w + a.z*b.x;
-  q.z = a.w*b.z + a.x*b.y - a.y*b.x + a.z*b.w;
-  q.w = a.w*b.w - a.x*b.x - a.y*b.y - a.z*b.z;
+  q.x = a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y;
+  q.y = a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x;
+  q.z = a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w;
+  q.w = a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z;
   return q;
 }
 
 static inline tp_vec3 tp_quat_rotate(tp_quat q, tp_vec3 v) {
   tp_vec3 u = tp_v3(q.x, q.y, q.z);
-  tp_vec3 t = tp_v3_scale(tp_v3_cross(u, v), 2);
+  tp_vec3 t = tp_v3_scale(tp_v3_cross(u, v), 2.0f);
   tp_vec3 vq = tp_v3_add(tp_v3_add(v, tp_v3_scale(t, q.w)), tp_v3_cross(u, t));
   return vq;
 }
@@ -148,23 +230,23 @@ static inline tp_mat3 tp_mat3_cols(tp_vec3 c0, tp_vec3 c1, tp_vec3 c2) {
 }
 
 static inline tp_mat3 tp_mat3_identity(void) {
-  tp_vec3 c0 = tp_v3(1, 0, 0);
-  tp_vec3 c1 = tp_v3(0, 1, 0);
-  tp_vec3 c2 = tp_v3(0, 0, 1);
+  tp_vec3 c0 = tp_v3(1.0f, 0.0f, 0.0f);
+  tp_vec3 c1 = tp_v3(0.0f, 1.0f, 0.0f);
+  tp_vec3 c2 = tp_v3(0.0f, 0.0f, 1.0f);
   return tp_mat3_cols(c0, c1, c2);
 }
 
 static inline tp_mat3 tp_mat3_zero(void) {
-  tp_vec3 c0 = tp_v3(0, 0, 0);
-  tp_vec3 c1 = tp_v3(0, 0, 0);
-  tp_vec3 c2 = tp_v3(0, 0, 0);
+  tp_vec3 c0 = tp_v3(0.0f, 0.0f, 0.0f);
+  tp_vec3 c1 = tp_v3(0.0f, 0.0f, 0.0f);
+  tp_vec3 c2 = tp_v3(0.0f, 0.0f, 0.0f);
   return tp_mat3_cols(c0, c1, c2);
 }
 
 static inline tp_mat3 tp_mat3_diagonal(tp_vec3 d) {
-  tp_vec3 c0 = tp_v3(d.x, 0, 0);
-  tp_vec3 c1 = tp_v3(0, d.y, 0);
-  tp_vec3 c2 = tp_v3(0, 0, d.z);
+  tp_vec3 c0 = tp_v3(d.x, 0.0f, 0.0f);
+  tp_vec3 c1 = tp_v3(0.0f, d.y, 0.0f);
+  tp_vec3 c2 = tp_v3(0.0f, 0.0f, d.z);
   return tp_mat3_cols(c0, c1, c2);
 }
 
@@ -213,9 +295,9 @@ static inline tp_mat3 tp_mat3_from_quat(tp_quat q) {
   float wx = q.w * q.x;
   float wy = q.w * q.y;
   float wz = q.w * q.z;
-  tp_vec3 c0 = tp_v3(1 - 2 * (yy + zz), 2 * (xy + wz), 2 * (xz - wy));
-  tp_vec3 c1 = tp_v3(2 * (xy - wz), 1 - 2 * (xx + zz), 2 * (yz + wx));
-  tp_vec3 c2 = tp_v3(2 * (xz + wy), 2 * (yz - wx), 1 - 2 * (xx + yy));
+  tp_vec3 c0 = tp_v3(1.0f - 2.0f * (yy + zz), 2.0f * (xy + wz), 2.0f * (xz - wy));
+  tp_vec3 c1 = tp_v3(2.0f * (xy - wz), 1.0f - 2.0f * (xx + zz), 2.0f * (yz + wx));
+  tp_vec3 c2 = tp_v3(2.0f * (xz + wy), 2.0f * (yz - wx), 1.0f - 2.0f * (xx + yy));
   return tp_mat3_cols(c0, c1, c2);
 }
 
