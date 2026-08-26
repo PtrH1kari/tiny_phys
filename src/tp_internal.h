@@ -4,6 +4,9 @@
 #include "tphys/tphys.h"
 
 #define TP_INVALID_INDEX 0xFFFFFFFFu
+#define TP_SLEEP_LINEAR_THRESHOLD   0.01f   /* м/с   */
+#define TP_SLEEP_ANGULAR_THRESHOLD  0.05f   /* рад/с */
+#define TP_SLEEP_TIME               0.5f    /* с     */
 
 typedef struct tp_body {
     /* --- integrator state --- */
