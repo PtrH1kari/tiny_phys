@@ -9,9 +9,7 @@ static tp_world* make_world(void) {
 
 int main(void) {
     TP_TEST("two bodies 10 m apart produce no pairs") {
-        tp_world_desc wd = tp_world_desc_default();
-        wd.gravity = tp_v3_zero();
-        tp_world* w = tp_world_create(&wd);
+        tp_world* w = make_world();
 
         tp_body_desc bd = tp_body_desc_default();
         bd.transform.position = tp_v3(0.0f, 0.0f, 0.0f);
@@ -27,15 +25,11 @@ int main(void) {
     }
 
     TP_TEST("two bodies in one point produce 1 pair") {
-        tp_world_desc wd = tp_world_desc_default();
-        wd.gravity = tp_v3_zero();
-        tp_world* w = tp_world_create(&wd);
+        tp_world* w = make_world();
 
         tp_body_desc bd = tp_body_desc_default();
         bd.transform.position = tp_v3(0.0f, 0.0f, 0.0f);
         tp_body_create(w, &bd);
-
-        bd.transform.position = tp_v3(0.0f, 0.0f, 0.0f);
         tp_body_create(w, &bd);
         
         tp_world_step(w, 1.0f / 60.0f);
@@ -45,18 +39,12 @@ int main(void) {
     }
 
     TP_TEST("three bodies in one point produce 3 pairs") {
-        tp_world_desc wd = tp_world_desc_default();
-        wd.gravity = tp_v3_zero();
-        tp_world* w = tp_world_create(&wd);
+        tp_world* w = make_world();
 
         tp_body_desc bd = tp_body_desc_default();
         bd.transform.position = tp_v3(0.0f, 0.0f, 0.0f);
         tp_body_create(w, &bd);
-
-        bd.transform.position = tp_v3(0.0f, 0.0f, 0.0f);
         tp_body_create(w, &bd);
-
-        bd.transform.position = tp_v3(0.0f, 0.0f, 0.0f);
         tp_body_create(w, &bd);
         
         tp_world_step(w, 1.0f / 60.0f);
@@ -66,17 +54,13 @@ int main(void) {
     }
 
     TP_TEST("two STATIC bodies in one point produce no pairs") {
-        tp_world_desc wd = tp_world_desc_default();
-        wd.gravity = tp_v3_zero();
-        tp_world* w = tp_world_create(&wd);
+        tp_world* w = make_world();
 
         tp_body_desc bd = tp_body_desc_default();
         bd.type = TP_BODY_STATIC;
 
         bd.transform.position = tp_v3(0.0f, 0.0f, 0.0f);
         tp_body_create(w, &bd);
-
-        bd.transform.position = tp_v3(0.0f, 0.0f, 0.0f);
         tp_body_create(w, &bd);
         
         tp_world_step(w, 1.0f / 60.0f);
@@ -86,9 +70,7 @@ int main(void) {
     }
 
     TP_TEST("STATIC and DYNAMIC bodies in one point produce 1 pair") {
-        tp_world_desc wd = tp_world_desc_default();
-        wd.gravity = tp_v3_zero();
-        tp_world* w = tp_world_create(&wd);
+        tp_world* w = make_world();
 
         tp_body_desc bd = tp_body_desc_default();
         bd.type = TP_BODY_STATIC;
@@ -96,7 +78,6 @@ int main(void) {
         tp_body_create(w, &bd);
         
         bd.type = TP_BODY_DYNAMIC;
-        bd.transform.position = tp_v3(0.0f, 0.0f, 0.0f);
         tp_body_create(w, &bd);
         
         tp_world_step(w, 1.0f / 60.0f);
@@ -106,9 +87,7 @@ int main(void) {
     }
 
     TP_TEST("one body at (0,0,0) produce no pairs") {
-        tp_world_desc wd = tp_world_desc_default();
-        wd.gravity = tp_v3_zero();
-        tp_world* w = tp_world_create(&wd);
+        tp_world* w = make_world();
 
         tp_body_desc bd = tp_body_desc_default();
         bd.transform.position = tp_v3(0.0f, 0.0f, 0.0f);
@@ -121,9 +100,7 @@ int main(void) {
     }
 
     TP_TEST("one destroyed body produce no pairs") {
-        tp_world_desc wd = tp_world_desc_default();
-        wd.gravity = tp_v3_zero();
-        tp_world* w = tp_world_create(&wd);
+        tp_world* w = make_world();
 
         tp_body_desc bd = tp_body_desc_default();
         bd.transform.position = tp_v3(0.0f, 0.0f, 0.0f);
@@ -137,9 +114,7 @@ int main(void) {
     }
 
     TP_TEST("50 bodies at the same point produce 1225 pairs") {
-        tp_world_desc wd = tp_world_desc_default();
-        wd.gravity = tp_v3_zero();
-        tp_world* w = tp_world_create(&wd);
+        tp_world* w = make_world();
 
         tp_body_desc bd = tp_body_desc_default();
         for (int i = 0; i < 50; ++i) tp_body_create(w, &bd);
