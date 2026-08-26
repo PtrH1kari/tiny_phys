@@ -170,6 +170,61 @@ void tp_world_destroy(tp_world *world) {
     alloc.free_fn(world, alloc.ctx);
 }
 
+tp_body_id tp_body_create(tp_world* world, const tp_body_desc* desc) {
+    if (world == NULL) return tp_body_id_null();
+    if (world->body_free_head == TP_INVALID_INDEX) {
+        if (!tp_body_pool_grow(world)) return tp_body_id_null();
+    }
+    uint32_t index = world->body_free_head;
+    tp_body* b = &world->bodies[index];
+    world->body_free_head = b->next_free;
+    tp_body_desc d = desc ? *desc : tp_body_desc_default();
+    uint32_t generation = b->generation;
+    memset(b, 0, sizeof *b);
+    b->generation = generation;
+    b->in_use     = true;
+    b->next_free  = TP_INVALID_INDEX;
+    b->xform = d.transform;
+    b->linear_velocity = d.linear_velocity;
+    b->angular_velocity = d.angular_velocity;
+    b->type = d.type;
+    b->linear_damping = d.linear_damping;
+    b->angular_damping = d.angular_damping;
+    b->gravity_scale = d.gravity_scale;
+    b->lock_rotation = d.lock_rotation;
+    b->user_data = d.user_data;
+    b->awake = !d.start_asleep;
+    b->sleep_timer = 0.0f;
+    if (d.type == TP_BODY_DYNAMIC) {
+        b->inv_mass          = 1.0f;                 /* TODO(M4) */
+        b->inv_inertia_local = tp_mat3_identity();   /* TODO(M4) */
+    } else {
+        b->inv_mass          = 0.0f;                 /* бесконечная масса */
+        b->inv_inertia_local = tp_mat3_zero();
+    }
+    tp_body_update_inertia_world(b);
+    world->body_count++;
+    tp_body_id id;
+    id.index = index;
+    id.generation = generation;
+    return id;
+}
+
+void tp_body_destroy(tp_world* world, tp_body_id id) {
+    tp_body* b = tp_body_lookup(world, id);
+    if (b == NULL) return;
+    b->in_use = false;
+    b->generation++;
+    if (b->generation == 0) b->generation = 1;
+    b->next_free = world->body_free_head;
+    world->body_free_head = id.index;
+    world->body_count--;
+}
+
+bool tp_body_is_valid(const tp_world* world, tp_body_id id) {
+    return tp_body_lookup_const(world, id) != NULL;
+}
+
 const char* tp_version_string(void) {
     return "tiny_phys 0.1.0-dev";
 }
